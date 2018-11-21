@@ -1,0 +1,8 @@
+[package]
+name = "winfolder"
+version = "0.1.0"
+authors = ["Hiraku <masyuo@protonmail.com>"]
+
+[dependencies]
+winreg = "0.5.1"
+iui = "0.3.0"
