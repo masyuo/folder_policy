@@ -6,7 +6,7 @@ use winreg::enums::*;
 use iui::prelude::*;
 use iui::controls::{Checkbox, Group, LayoutGrid, GridAlignment, GridExpand};
 
-fn value(val : bool) -> String {
+fn key_value(val : bool) -> String {
     let mut ret = String::new();
     if val == true {
         ret.push_str("Hide");
@@ -17,7 +17,12 @@ fn value(val : bool) -> String {
     return ret;
 }
 
-fn
+fn toggle_key(path : &[&str], value : &mut [bool], index: usize) {
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let key = hklm.open_subkey_with_flags(path[index], KEY_ALL_ACCESS).expect("Failed to open subkey");
+    key.set_value("ThisPCPolicy", &key_value(value[index])).expect("Failed to write value");
+    value[index] = !value[index]
+}
 
 fn main() {
     let paths : [&str; 5] = [
@@ -68,46 +73,31 @@ fn main() {
     documents_toggle.on_toggled(&ui, {
         let _ui = ui.clone();
         move |_val| {
-            let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-            let key = hklm.open_subkey_with_flags( paths[0],KEY_ALL_ACCESS).expect("Failed to open subkey");
-            key.set_value("ThisPCPolicy", &value(enabled[0]));
-            enabled[0] = !enabled[0];
+            toggle_key(&paths, &mut enabled, 0);
         }
     });
     pictures_toggle.on_toggled(&ui, {
         let _ui = ui.clone();
         move |_val| {
-            let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-            let key = hklm.open_subkey_with_flags( paths[1],KEY_ALL_ACCESS).expect("Failed to open subkey");
-            key.set_value("ThisPCPolicy", &value(enabled[1]));
-            enabled[1] = !enabled[1];
+            toggle_key(&paths, &mut enabled, 1);
         }
     });
     videos_toggle.on_toggled(&ui, {
         let _ui = ui.clone();
         move |_val| {
-            let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-            let key = hklm.open_subkey_with_flags( paths[2],KEY_ALL_ACCESS).expect("Failed to open subkey");
-            key.set_value("ThisPCPolicy", &value(enabled[2]));
-            enabled[2] = !enabled[2];
+            toggle_key(&paths, &mut enabled, 2);
         }
     });
     downloads_toggle.on_toggled(&ui, {
         let _ui = ui.clone();
         move |_val| {
-            let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-            let key = hklm.open_subkey_with_flags( paths[3],KEY_ALL_ACCESS).expect("Failed to open subkey");
-            key.set_value("ThisPCPolicy", &value(enabled[3]));
-            enabled[3] = !enabled[3];
+            toggle_key(&paths, &mut enabled, 3);
         }
     });
     music_toggle.on_toggled(&ui, {
         let _ui = ui.clone();
         move |_val| {
-            let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-            let key = hklm.open_subkey_with_flags( paths[4],KEY_ALL_ACCESS).expect("Failed to open subkey");
-            key.set_value("ThisPCPolicy", &value(enabled[4]));
-            enabled[4] = !enabled[4];
+            toggle_key(&paths, &mut enabled, 4);
         }
     });
 
