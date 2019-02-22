@@ -3,6 +3,7 @@ extern crate iui;
 
 use winreg::RegKey;
 use winreg::enums::*;
+use std::io;
 use iui::prelude::*;
 use iui::controls::{Checkbox, Group, LayoutGrid, GridAlignment, GridExpand};
 
@@ -24,6 +25,19 @@ fn toggle_key(path : &[&str], value : &mut [bool], index: usize) {
     value[index] = !value[index]
 }
 
+fn toggle_desktop(value : &mut [bool], index: usize){
+	let path: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FolderDescriptions\{B4BFCC3A-DB2C-424C-B029-7FE99A87C641}\PropertyBag";
+	let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+	let key = hklm.open_subkey_with_flags(path, KEY_ALL_ACCESS).expect("Failed to open subkey");
+	if value[index] == true {
+		key.create_subkey("ThisPCPolicy").unwrap();
+		key.set_value("ThisPCPolicy", &String::from("Hide")).expect("Failed to write value");
+	} else {
+		key.delete_value("ThisPCPolicy").unwrap();
+	}
+	value[index] = !value[index]
+}
+
 fn main() {
     let paths : [&str; 5] = [
         r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FolderDescriptions\{f42ee2d3-909f-4907-8871-4c22fc0bf756}\PropertyBag",       //Documents
@@ -33,11 +47,11 @@ fn main() {
         r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FolderDescriptions\{a0c69a99-21c8-4671-8703-7934162fcf1d}\PropertyBag"        //Music
     ];
 
-    let mut enabled : [bool; 5] = Default::default();
+    let mut enabled : [bool; 6] = Default::default();
 
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     for i in 0..paths.len() {
-        let key = hklm.open_subkey_with_flags( paths[0],KEY_ALL_ACCESS).expect("Failed to open subkey");
+        let key = hklm.open_subkey(paths[i]).expect("Failed to open subkey");
         let value : String = key.get_value("ThisPCPolicy").expect("Failed to find value");
 
         if value == "Show" {
@@ -46,6 +60,18 @@ fn main() {
             enabled[i] = false;
         }
     }
+
+	let path: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FolderDescriptions\{B4BFCC3A-DB2C-424C-B029-7FE99A87C641}\PropertyBag";
+	let key = hklm.open_subkey(path).expect("Failed to open subkey");
+	let value : String = key.get_value("ThisPCPolicy").unwrap_or_else(|e| match e.kind() {
+		io::ErrorKind::NotFound => String::new(),
+		_ => panic!("{:?}", e)
+	});
+	if value == "" {
+		enabled[5] = true
+	} else {
+		enabled[5] = false
+	}
 
     let ui = UI::init().expect("Couldn't initialize ui");
     let mut win = Window::new(&ui, "Test App", 200, 200, WindowType::NoMenubar);
@@ -68,6 +94,9 @@ fn main() {
 
     let mut music_toggle = Checkbox::new(&ui, "Music");
     music_toggle.set_checked(&ui, enabled[4]);
+
+	let mut desktop_toggle = Checkbox::new(&ui, "Desktop");
+	desktop_toggle.set_checked(&ui, enabled[5]);
 
     //This is so gross.
     documents_toggle.on_toggled(&ui, {
@@ -100,12 +129,19 @@ fn main() {
             toggle_key(&paths, &mut enabled, 4);
         }
     });
+	desktop_toggle.on_toggled(&ui, {
+		let _ui = ui.clone();
+		move |_val| {
+			toggle_desktop(&mut enabled, 5)
+		}
+	});
 
     layout.append(&ui, documents_toggle, 0, 0, 1, 1, GridExpand::Neither, GridAlignment::Fill, GridAlignment::Fill);
     layout.append(&ui, pictures_toggle, 0, 1, 1, 1, GridExpand::Neither, GridAlignment::Fill, GridAlignment::Fill);
     layout.append(&ui, videos_toggle, 0, 2, 1, 1, GridExpand::Neither, GridAlignment::Fill, GridAlignment::Fill);
     layout.append(&ui, downloads_toggle, 1, 0, 1, 1, GridExpand::Neither, GridAlignment::Fill, GridAlignment::Fill);
     layout.append(&ui, music_toggle, 1, 1, 1, 1, GridExpand::Neither, GridAlignment::Fill, GridAlignment::Fill);
+	layout.append(&ui, desktop_toggle, 1, 2, 1, 1, GridExpand::Neither, GridAlignment::Fill, GridAlignment::Fill);
 
     group.set_child(&ui, layout);
 
